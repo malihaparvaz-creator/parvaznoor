@@ -1,0 +1,147 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Amiri:wght@400;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Parvaz Noor — Moonlit Sanctuary */
+    --background: 230 35% 7%;
+    --foreground: 40 30% 92%;
+
+    --card: 230 30% 11%;
+    --card-foreground: 40 30% 92%;
+
+    --popover: 230 35% 9%;
+    --popover-foreground: 40 30% 92%;
+
+    /* Warm lantern gold */
+    --primary: 38 70% 65%;
+    --primary-foreground: 230 40% 10%;
+    --primary-glow: 42 85% 72%;
+
+    /* Deep night indigo */
+    --secondary: 232 30% 16%;
+    --secondary-foreground: 40 25% 88%;
+
+    --muted: 230 25% 14%;
+    --muted-foreground: 40 12% 65%;
+
+    /* Soft sage / spiritual green */
+    --accent: 165 35% 55%;
+    --accent-foreground: 230 40% 10%;
+
+    --destructive: 0 65% 55%;
+    --destructive-foreground: 40 30% 95%;
+
+    --border: 230 25% 18%;
+    --input: 230 25% 16%;
+    --ring: 38 70% 65%;
+
+    --radius: 1.25rem;
+
+    /* Spiritual gradients */
+    --gradient-night: linear-gradient(180deg, hsl(230 40% 9%) 0%, hsl(232 35% 12%) 50%, hsl(230 35% 7%) 100%);
+    --gradient-dawn: linear-gradient(135deg, hsl(38 70% 65% / 0.18) 0%, hsl(280 40% 50% / 0.12) 50%, hsl(165 35% 55% / 0.15) 100%);
+    --gradient-gold: linear-gradient(135deg, hsl(42 85% 72%) 0%, hsl(38 70% 60%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(230 30% 13% / 0.85) 0%, hsl(232 28% 10% / 0.85) 100%);
+    --gradient-glow: radial-gradient(ellipse at top, hsl(38 70% 65% / 0.18), transparent 60%);
+
+    /* Shadows — soft moonlight */
+    --shadow-soft: 0 8px 32px -12px hsl(230 50% 3% / 0.6);
+    --shadow-glow: 0 0 60px hsl(38 70% 65% / 0.25);
+    --shadow-elevated: 0 20px 60px -20px hsl(230 60% 2% / 0.8), 0 0 0 1px hsl(40 30% 92% / 0.04);
+
+    /* Motion */
+    --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+    --transition-soft: all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+
+    --sidebar-background: 230 35% 7%;
+    --sidebar-foreground: 40 30% 92%;
+    --sidebar-primary: 38 70% 65%;
+    --sidebar-primary-foreground: 230 40% 10%;
+    --sidebar-accent: 230 30% 13%;
+    --sidebar-accent-foreground: 40 30% 92%;
+    --sidebar-border: 230 25% 18%;
+    --sidebar-ring: 38 70% 65%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html, body {
+    @apply bg-background text-foreground;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    font-feature-settings: 'ss01', 'cv11';
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background: var(--gradient-night);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: var(--gradient-glow);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: 'Cormorant Garamond', serif;
+    letter-spacing: -0.01em;
+  }
+
+  .font-arabic {
+    font-family: 'Amiri', serif;
+    direction: rtl;
+    line-height: 2.4;
+  }
+
+  .font-display {
+    font-family: 'Cormorant Garamond', serif;
+  }
+}
+
+@layer components {
+  .glass {
+    background: var(--gradient-card);
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border: 1px solid hsl(40 30% 92% / 0.06);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .glass-strong {
+    background: hsl(230 30% 12% / 0.7);
+    backdrop-filter: blur(28px) saturate(160%);
+    -webkit-backdrop-filter: blur(28px) saturate(160%);
+    border: 1px solid hsl(40 30% 92% / 0.08);
+    box-shadow: var(--shadow-elevated);
+  }
+
+  .gold-text {
+    background: var(--gradient-gold);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .glow-gold {
+    box-shadow: var(--shadow-glow);
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+}

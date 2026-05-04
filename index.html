@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Parvaz Noor — A peaceful spiritual companion</title>
+    <meta name="description" content="Build consistency in Quran, Salah, and reflection through a calm, gentle Islamic productivity sanctuary." />
+
+    <!-- PWA Meta -->
+    <meta name="theme-color" content="#0d1020" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Noor" />
+    <meta name="application-name" content="Parvaz Noor" />
+    <meta name="msapplication-TileColor" content="#0d1020" />
+
+    <!-- Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/icon-32x32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icon-180x180.png" />
+    <link rel="manifest" href="/manifest.json" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(reg => console.log('[Noor] SW registered:', reg.scope))
+            .catch(err => console.warn('[Noor] SW failed:', err));
+        });
+      }
+    </script>
+  </body>
+</html>
