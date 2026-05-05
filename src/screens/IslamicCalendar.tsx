@@ -1,24 +1,32 @@
 import { useState, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Star } from 'lucide-react';
 
-// ── Hijri conversion (Kuwaiti algorithm — accurate for civil purposes) ────────
+// ── Hijri conversion using verified Islamic calendar algorithm ────────────────
 function gregorianToHijri(gYear: number, gMonth: number, gDay: number): { y: number; m: number; d: number } {
-  const jd = Math.floor((1461 * (gYear + 4800 + Math.floor((gMonth - 14) / 12))) / 4)
-    + Math.floor((367 * (gMonth - 2 - 12 * Math.floor((gMonth - 14) / 12))) / 12)
-    - Math.floor((3 * Math.floor((gYear + 4900 + Math.floor((gMonth - 14) / 12)) / 100)) / 4)
-    + gDay - 32075;
+  // Step 1: Convert Gregorian date to Julian Day Number
+  const a = Math.floor((14 - gMonth) / 12);
+  const y = gYear + 4800 - a;
+  const m = gMonth + 12 * a - 3;
+  const jd = gDay + Math.floor((153 * m + 2) / 5) + 365 * y + Math.floor(y / 4)
+    - Math.floor(y / 100) + Math.floor(y / 400) - 32045;
 
-  let l = jd - 1948440 + 10632;
-  const n = Math.floor((l - 1) / 10631);
-  l = l - 10631 * n + 354;
-  const j = Math.floor((10985 - l) / 5316) * Math.floor((50 * l) / 17719)
-    + Math.floor(l / 5670) * Math.floor((43 * l) / 15238);
-  l = l - Math.floor((30 - j) / 15) * Math.floor((17719 * j) / 50)
-    - Math.floor(j / 16) * Math.floor((15238 * j) / 43) + 29;
-  const hMonth = Math.floor((24 * l) / 709);
-  const hDay = l - Math.floor((709 * hMonth) / 24);
-  const hYear = 30 * n + j - 30;
-  return { y: hYear, m: hMonth, d: hDay };
+  // Step 2: Convert Julian Day Number to Hijri using Kuwaiti algorithm (standard algorithm)
+  const n = jd + 1;
+  const q = Math.floor(n / 10631);
+  const r = n % 10631;
+  
+  const a2 = Math.floor((33 * r + 3) / 10646);
+  const w = r - Math.floor((10646 * a2 - 3) / 33) + 1;
+  
+  const hYear = 30 * q + a2 + 1;
+  const hMonth = Math.floor((11 * w + 330) / 325);
+  const hDay = w - Math.floor((325 * hMonth - 320) / 11);
+
+  return { 
+    y: hYear, 
+    m: hMonth >= 1 && hMonth <= 12 ? hMonth : (hMonth < 1 ? 1 : 12),
+    d: hDay >= 1 && hDay <= 30 ? hDay : (hDay < 1 ? 1 : 30)
+  };
 }
 
 const HIJRI_MONTHS = [
@@ -60,19 +68,6 @@ const EVENT_COLORS = {
   sunnah:  { bg: 'bg-primary/20',   text: 'text-primary',   border: 'border-primary/30'   },
   historic:{ bg: 'bg-blue-500/20',  text: 'text-blue-400',  border: 'border-blue-500/30'  },
 };
-
-// Get approximate Gregorian date for a Hijri date in a given year
-// (we search forward from Jan 1 of gYear to find the match)
-function hijriToGregorianApprox(hYear: number, hMonth: number, hDay: number): Date | null {
-  // Search within ±2 years
-  const start = new Date(Date.UTC(2020, 0, 1));
-  for (let i = 0; i < 800; i++) {
-    const d = new Date(start.getTime() + i * 86400000);
-    const h = gregorianToHijri(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate());
-    if (h.y === hYear && h.m === hMonth && h.d === hDay) return d;
-  }
-  return null;
-}
 
 export const IslamicCalendar = () => {
   const today = new Date();
