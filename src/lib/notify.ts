@@ -74,8 +74,11 @@ export const schedulePrayerNotifications = (
     navigator.serviceWorker.ready.then(reg => {
       const prayers = rows.map(row => ({
         name: row.name,
+        preAdhanAt: row.date.getTime() - 5 * 60 * 1000,
         adhanAt: row.date.getTime(),
         strictAt: row.date.getTime() + 30 * 60 * 1000,
+        preAdhanTitle: `⏰ ${row.name}`,
+        preAdhanBody: `${row.time} — prepare yourself`,
         adhanTitle: ADHAN_COPY[row.name].title,
         adhanBody:  ADHAN_COPY[row.name].body,
         strictTitle: STRICT_COPY[row.name].title,

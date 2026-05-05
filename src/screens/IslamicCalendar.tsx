@@ -112,11 +112,12 @@ export const IslamicCalendar = () => {
     ? dayData.find(d => d.gDate.toDateString() === selected.toDateString())
     : null;
 
-  // Upcoming events in the next 30 days
+  // Upcoming events in the next 60 days
   const upcomingEvents = useMemo(() => {
     const results: { date: Date; event: typeof HIJRI_EVENTS[0]; hijri: ReturnType<typeof gregorianToHijri> }[] = [];
     for (let i = 0; i <= 60; i++) {
-      const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i);
+      const d = new Date(today);
+      d.setDate(d.getDate() + i);
       const h = gregorianToHijri(d.getFullYear(), d.getMonth() + 1, d.getDate());
       const events = HIJRI_EVENTS.filter(e => e.hMonth === h.m && e.hDay === h.d);
       events.forEach(ev => results.push({ date: d, event: ev, hijri: h }));
