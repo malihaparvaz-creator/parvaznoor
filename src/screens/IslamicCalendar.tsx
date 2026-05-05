@@ -48,31 +48,91 @@ export const IslamicCalendar = () => {
   const [todayHijri, setTodayHijri] = useState<HijriInfo>({ y: 1447, m: 11, d: 18 });
   const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
 
-  const getCalendarMethod = () => {
-    return calendarMode === 'indian' ? 'ISNA' : ''; // ISNA is commonly used in India/Pakistan region
-  };
+  const getCalendarMethod = () => calendarMode === 'indian' ? 'ISNA' : '';
 
   const fetchHijri = async (gYear: number, gMonth: number, gDay: number): Promise<HijriInfo> => {
     try {
       const dateStr = `${gDay.toString().padStart(2,'0')}-${gMonth.toString().padStart(2,'0')}-${gYear}`;
       let url = `https://api.aladhan.com/v1/gToH/${dateStr}`;
-
       const method = getCalendarMethod();
       if (method) url += `?calendarMethod=${method}`;
 
       const res = await fetch(url);
       const json = await res.json();
       const h = json.data.hijri;
-
-      return {
-        y: parseInt(h.year),
-        m: parseInt(h.month.number),
-        d: parseInt(h.day)
-      };
+      return { y: parseInt(h.year), m: parseInt(h.month.number), d: parseInt(h.day) };
     } catch (err) {
       console.error("Hijri fetch error:", err);
       return { y: 1447, m: 1, d: 1 };
     }
+  };
+
+  // Comprehensive Islamic Events (Fard + Sunnah + Historic)
+  const getEvents = (hijri: HijriInfo): Event[] => {
+    const events: Event[] = [];
+    const { m: month, d: day } = hijri;
+
+    // === FARD / MAJOR EVENTS ===
+    if (month === 9 && day === 1) 
+      events.push({ name: "Ramaḍān Begins", desc: "Start of the Blessed Month of Fasting", type: 'fard' });
+
+    if (month === 9 && [21, 23, 25, 27, 29].includes(day)) 
+      events.push({ name: "Laylat al-Qadr", desc: "Night of Power - Better than a thousand months", type: 'fard' });
+
+    if (month === 10 && day === 1) 
+      events.push({ name: "Eid al-Fiṭr", desc: "Festival of Breaking the Fast", type: 'fard' });
+
+    if (month === 12 && day === 9) 
+      events.push({ name: "Day of 'Arafah", desc: "Standing at Arafah - Most Important Day of Hajj", type: 'fard' });
+
+    if (month === 12 && day === 10) 
+      events.push({ name: "Eid al-Aḍḥā", desc: "Feast of Sacrifice", type: 'fard' });
+
+    // === SUNNAH ===
+    if (month === 1 && day === 10) 
+      events.push({ name: "Day of Āshūrā", desc: "Fasting on 10th Muharram", type: 'sunnah' });
+
+    if (month === 1 && day === 9) 
+      events.push({ name: "Eve of Āshūrā", desc: "Recommended to fast 9th & 10th", type: 'sunnah' });
+
+    if (month === 8 && day === 15) 
+      events.push({ name: "Laylat al-Barā'ah", desc: "Night of Forgiveness (Shab-e-Barat)", type: 'sunnah' });
+
+    if (month === 6 && day === 15) 
+      events.push({ name: "Mid-Sha'ban", desc: "Laylat al-Nisf min Sha'ban", type: 'sunnah' });
+
+    if (month === 12 && [11, 12, 13].includes(day)) 
+      events.push({ name: "Ayyām al-Tashrīq", desc: "Days of Tashriq", type: 'sunnah' });
+
+    // === HISTORIC EVENTS ===
+    if (month === 1 && day === 1) 
+      events.push({ name: "Islamic New Year", desc: "1 Muharram - Hijri New Year", type: 'historic' });
+
+    if (month === 3 && day === 12) 
+      events.push({ name: "Mawlid al-Nabī ﷺ", desc: "Birth of Prophet Muhammad ﷺ", type: 'historic' });
+
+    if (month === 7 && day === 27) 
+      events.push({ name: "Isrā' and Mi'rāj", desc: "Night Journey & Ascension", type: 'historic' });
+
+    if (month === 9 && day === 17) 
+      events.push({ name: "Battle of Badr", desc: "First major battle - Victory of Truth", type: 'historic' });
+
+    if (month === 9 && day === 19) 
+      events.push({ name: "Conquest of Makkah", desc: "Fath Makkah", type: 'historic' });
+
+    if (month === 10 && day === 6) 
+      events.push({ name: "Battle of Uhud", desc: "Battle of Uhud", type: 'historic' });
+
+    if (month === 10 && day === 1) 
+      events.push({ name: "Battle of the Trench", desc: "Battle of Khandaq", type: 'historic' });
+
+    if (month === 11 && day === 25) 
+      events.push({ name: "Battle of Khandaq", desc: "Battle of the Trench", type: 'historic' });
+
+    if (month === 12 && day === 18) 
+      events.push({ name: "Ghadeer Khumm", desc: "Event of Ghadeer (in some traditions)", type: 'historic' });
+
+    return events;
   };
 
   // Load current month
@@ -85,11 +145,7 @@ export const IslamicCalendar = () => {
       for (let d = 1; d <= daysInMonth; d++) {
         const hijri = await fetchHijri(viewYear, viewMonth + 1, d);
         const events = getEvents(hijri);
-        result.push({
-          gDate: new Date(viewYear, viewMonth, d),
-          hijri,
-          events
-        });
+        result.push({ gDate: new Date(viewYear, viewMonth, d), hijri, events });
       }
       setDayData(result);
       setLoading(false);
@@ -104,38 +160,32 @@ export const IslamicCalendar = () => {
       .then(setTodayHijri);
   }, [calendarMode]);
 
-  // Upcoming Events
+  // Upcoming Events (No duplicates)
   useEffect(() => {
     const loadUpcoming = async () => {
       const results: any[] = [];
+      const seen = new Set<string>();
+
       for (let i = 0; i <= 60; i++) {
         const d = new Date(today);
         d.setDate(d.getDate() + i);
+        
         const hijri = await fetchHijri(d.getFullYear(), d.getMonth() + 1, d.getDate());
-        const events = getEvents(hijri);
-        events.forEach(ev => results.push({ date: new Date(d), event: ev, hijri }));
+        const eventsList = getEvents(hijri);
+
+        eventsList.forEach(ev => {
+          const key = `${d.toDateString()}-${ev.name}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            results.push({ date: new Date(d), event: ev, hijri });
+          }
+        });
       }
-      setUpcomingEvents(results.slice(0, 8));
+      setUpcomingEvents(results.slice(0, 12));
     };
+
     loadUpcoming();
   }, [calendarMode]);
-
-  const getEvents = (hijri: HijriInfo): Event[] => {
-    const events: Event[] = [];
-    const { m: month, d: day } = hijri;
-
-    if (month === 9 && day === 1) events.push({ name: "Ramaḍān Begins", desc: "Start of the blessed month", type: 'fard' });
-    if (month === 9 && [21,23,25,27,29].includes(day)) events.push({ name: "Laylat al-Qadr", desc: "Night of Power", type: 'fard' });
-    if (month === 10 && day === 1) events.push({ name: "Eid al-Fiṭr", desc: "Festival of Breaking Fast", type: 'fard' });
-    if (month === 12 && day === 9) events.push({ name: "Day of 'Arafah", desc: "Hajj - Standing at Arafah", type: 'fard' });
-    if (month === 12 && day === 10) events.push({ name: "Eid al-Aḍḥā", desc: "Feast of Sacrifice", type: 'fard' });
-    if (month === 1 && day === 1) events.push({ name: "Islamic New Year", desc: "1 Muharram", type: 'historic' });
-    if (month === 1 && day === 10) events.push({ name: "Day of Āshūrā", desc: "Fasting recommended", type: 'sunnah' });
-    if (month === 3 && day === 12) events.push({ name: "Mawlid al-Nabī ﷺ", desc: "Birth of Prophet Muhammad ﷺ", type: 'historic' });
-    if (month === 7 && day === 27) events.push({ name: "Isrā' and Mi'rāj", desc: "Night Journey & Ascension", type: 'historic' });
-
-    return events;
-  };
 
   const firstDay = new Date(viewYear, viewMonth, 1);
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
@@ -167,12 +217,16 @@ export const IslamicCalendar = () => {
             {HIJRI_MONTHS[todayHijri.m - 1]} {todayHijri.d}, {todayHijri.y} AH
           </p>
           <div className="flex gap-2">
-            <button onClick={() => setCalendarMode('worldwide')}
-              className={`text-xs px-3 py-1 rounded-full ${calendarMode === 'worldwide' ? 'bg-primary text-white' : 'bg-secondary'}`}>
+            <button 
+              onClick={() => setCalendarMode('worldwide')}
+              className={`text-xs px-3 py-1 rounded-full ${calendarMode === 'worldwide' ? 'bg-primary text-white' : 'bg-secondary'}`}
+            >
               Worldwide
             </button>
-            <button onClick={() => setCalendarMode('indian')}
-              className={`text-xs px-3 py-1 rounded-full ${calendarMode === 'indian' ? 'bg-primary text-white' : 'bg-secondary'}`}>
+            <button 
+              onClick={() => setCalendarMode('indian')}
+              className={`text-xs px-3 py-1 rounded-full ${calendarMode === 'indian' ? 'bg-primary text-white' : 'bg-secondary'}`}
+            >
               Indian
             </button>
           </div>
@@ -181,7 +235,6 @@ export const IslamicCalendar = () => {
 
       {/* Calendar Grid */}
       <section className="glass-strong rounded-3xl p-5">
-        {/* Navigation */}
         <div className="flex items-center justify-between mb-4">
           <button onClick={prevMonth} className="glass rounded-full w-9 h-9 flex items-center justify-center hover:bg-secondary/40">
             <ChevronLeft className="w-4 h-4" />
@@ -200,14 +253,12 @@ export const IslamicCalendar = () => {
           </div>
         ) : (
           <>
-            {/* Weekdays */}
             <div className="grid grid-cols-7 mb-2">
               {['Su','Mo','Tu','We','Th','Fr','Sa'].map(d => (
                 <p key={d} className={`text-center text-[10px] font-medium pb-1 ${d === 'Fr' ? 'text-primary' : 'text-muted-foreground'}`}>{d}</p>
               ))}
             </div>
 
-            {/* Days Grid */}
             <div className="grid grid-cols-7 gap-y-1">
               {Array.from({ length: startDow }).map((_, i) => <div key={`empty-${i}`} />)}
               {dayData.map(({ gDate, hijri, events }) => {
@@ -293,7 +344,8 @@ export const IslamicCalendar = () => {
                   <p className="font-medium">{event.name}</p>
                   <p className="text-sm text-muted-foreground">{event.desc}</p>
                   <p className="text-xs text-muted-foreground/70 mt-1">
-                    {HIJRI_MONTHS[hijri.m - 1]} {hijri.d} • {diffDays === 0 ? 'Today' : diffDays === 1 ? 'Tomorrow' : `In ${diffDays} days`}
+                    {HIJRI_MONTHS[hijri.m - 1]} {hijri.d} • 
+                    {diffDays === 0 ? 'Today' : diffDays === 1 ? 'Tomorrow' : `In ${diffDays} days`}
                   </p>
                 </div>
               </div>
