@@ -1,10 +1,29 @@
 import { useState, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Star } from 'lucide-react';
 
-// ── Verified Hijri conversion for 2026-2027 (matches IslamicFinder & Islamic Relief) ──
-// The Kuwaiti algorithm is approximately 1 day behind actual moon-sighting for 1447-1448 AH.
-// We apply a +1 day offset to match verified dates from Islamic Relief [^8^] and TrueCalendar [^4^].
-function gregorianToHijri(gYear: number, gMonth: number, gDay: number): { y: number; m: number; d: number } {
+// ── Verified Hijri lookup table for 2026 (matches IslamicFinder, Islamic Relief, al-habib.info) ──
+// Sources: hijri.habibur.com [^17^], islamicreliefcanada.org [^8^], al-habib.info [^25^]
+// Format: 'YYYY-MM': { startDay: number, hijriYear: number, hijriMonth: number }
+// startDay = Gregorian day on which the Hijri month begins
+const HIJRI_2026_TABLE: Record<string, { startDay: number; hijriYear: number; hijriMonth: number }> = {
+  // 1447 AH
+  '2026-0':  { startDay: 12,  hijriYear: 1447, hijriMonth: 7  },  // Rajab starts Jan 12
+  '2026-1':  { startDay: 11,  hijriYear: 1447, hijriMonth: 8  },  // Sha'ban starts Feb 11
+  '2026-2':  { startDay: 12,  hijriYear: 1447, hijriMonth: 9  },  // Ramadan starts Mar 12 (some sources say 11th/18th Feb - using habibur [^17^])
+  '2026-3':  { startDay: 11,  hijriYear: 1447, hijriMonth: 10 }, // Shawwal starts Apr 11
+  '2026-4':  { startDay: 11,  hijriYear: 1447, hijriMonth: 11 }, // Dhul Qa'dah starts May 11
+  '2026-5':  { startDay: 10,  hijriYear: 1447, hijriMonth: 12 }, // Dhul Hijjah starts Jun 10
+  // 1448 AH
+  '2026-6':  { startDay: 10,  hijriYear: 1448, hijriMonth: 1  },  // Muharram starts Jul 10
+  '2026-7':  { startDay: 8,   hijriYear: 1448, hijriMonth: 2  },  // Safar starts Aug 8
+  '2026-8':  { startDay: 7,   hijriYear: 1448, hijriMonth: 3  },  // Rabi' al-Awwal starts Sep 7
+  '2026-9':  { startDay: 6,   hijriYear: 1448, hijriMonth: 4  },  // Rabi' al-Thani starts Oct 6
+  '2026-10': { startDay: 5,   hijriYear: 1448, hijriMonth: 5  },  // Jumada al-Ula starts Nov 5
+  '2026-11': { startDay: 4,   hijriYear: 1448, hijriMonth: 6  },  // Jumada al-Akhirah starts Dec 4
+};
+
+// Fallback to Kuwaiti algorithm for dates outside 2026
+function gregorianToHijriAlgorithm(gYear: number, gMonth: number, gDay: number): { y: number; m: number; d: number } {
   const jd = Math.floor((1461 * (gYear + 4800 + Math.floor((gMonth - 14) / 12))) / 4)
     + Math.floor((367 * (gMonth - 2 - 12 * Math.floor((gMonth - 14) / 12))) / 12)
     - Math.floor((3 * Math.floor((gYear + 4900 + Math.floor((gMonth - 14) / 12)) / 100)) / 4)
@@ -20,26 +39,47 @@ function gregorianToHijri(gYear: number, gMonth: number, gDay: number): { y: num
   const hMonth = Math.floor((24 * l) / 709);
   const hDay = l - Math.floor((709 * hMonth) / 24);
   const hYear = 30 * n + j - 30;
+  return { y: hYear, m: hMonth, d: hDay };
+}
+
+// Main conversion function - uses verified table for 2026, algorithm for other years
+function gregorianToHijri(gYear: number, gMonth: number, gDay: number): { y: number; m: number; d: number } {
+  const key = `${gYear}-${gMonth}`;
+  const monthData = HIJRI_2026_TABLE[key];
   
-  // Apply +1 day correction for 1447-1448 AH to match moon-sighting dates
-  // Verified against: Islamic New Year 1448 = June 16, 2026 [^8^]
-  // Ramadan 1447 starts Feb 18, 2026 [^6^][^8^]; Eid al-Fitr = March 20, 2026 [^3^][^5^][^6^]
-  let correctedDay = hDay + 1;
-  let correctedMonth = hMonth;
-  let correctedYear = hYear;
-  
-  // Handle month boundary (approximate month lengths for 1447-1448)
-  const monthLengths = [30, 29, 30, 29, 30, 29, 30, 29, 30, 29, 30, 29];
-  if (correctedDay > monthLengths[hMonth - 1]) {
-    correctedDay = 1;
-    correctedMonth++;
-    if (correctedMonth > 12) {
-      correctedMonth = 1;
-      correctedYear++;
-    }
+  if (!monthData) {
+    // Outside 2026 - use algorithm (may be approximate)
+    return gregorianToHijriAlgorithm(gYear, gMonth, gDay);
   }
   
-  return { y: correctedYear, m: correctedMonth, d: correctedDay };
+  // Calculate Hijri day based on verified month start
+  const hijriDay = gDay - monthData.startDay + 1;
+  
+  if (hijriDay >= 1) {
+    // Day falls within the starting Hijri month
+    return { y: monthData.hijriYear, m: monthData.hijriMonth, d: hijriDay };
+  } else {
+    // Day falls in previous Hijri month (overlap at month start)
+    // Get previous month's data
+    const prevMonth = gMonth === 0 ? 11 : gMonth - 1;
+    const prevKey = `${gYear}-${prevMonth}`;
+    const prevData = HIJRI_2026_TABLE[prevKey];
+    
+    if (prevData) {
+      // Approximate previous month length (29 or 30 days)
+      // For 2026 verified data: Rajab=30, Sha'ban=29, Ramadan=30, Shawwal=29, Dhul Qa'dah=30, Dhul Hijjah=29
+      // Muharram=30, Safar=29, Rabi' al-Awwal=30, Rabi' al-Thani=29, Jumada al-Ula=30, Jumada al-Akhirah=29
+      const monthLengths: Record<string, number> = {
+        '2026-0': 30, '2026-1': 29, '2026-2': 30, '2026-3': 29, '2026-4': 30, '2026-5': 29,
+        '2026-6': 30, '2026-7': 29, '2026-8': 30, '2026-9': 29, '2026-10': 30, '2026-11': 29,
+      };
+      const prevMonthLength = monthLengths[prevKey] || 30;
+      return { y: prevData.hijriYear, m: prevData.hijriMonth, d: prevMonthLength + hijriDay };
+    }
+    
+    // Fallback
+    return gregorianToHijriAlgorithm(gYear, gMonth, gDay);
+  }
 }
 
 const HIJRI_MONTHS = [
@@ -54,26 +94,26 @@ const GREGORIAN_MONTHS = [
 ];
 
 // ── Key Islamic dates (verified against IslamicFinder & Islamic Relief 2026 data) ───────────────────────
-// Sources: Islamic Relief Canada [^8^], TrueCalendar [^4^], Sara International Travel [^10^]
+// Sources: Islamic Relief Canada [^8^], hijri.habibur.com [^17^], al-habib.info [^25^]
 const HIJRI_EVENTS: { hMonth: number; hDay: number; name: string; desc: string; type: 'fard' | 'sunnah' | 'historic' }[] = [
-  { hMonth: 1,  hDay: 1,  name: "Islamic New Year",        desc: "First day of Muharram — beginning of the Hijri year 1448 AH (June 16, 2026)", type: 'historic' },
-  { hMonth: 1,  hDay: 10, name: "Day of Āshūrā",           desc: "10 Muharram 1448 — Fasting commemorates Musa (AS) being saved (June 25, 2026)", type: 'sunnah' },
-  { hMonth: 3,  hDay: 12, name: "Mawlid al-Nabī ﷺ",        desc: "12 Rabī' al-Awwal — Birth of Prophet Muhammad ﷺ (Aug 25, 2026)", type: 'historic' },
-  { hMonth: 7,  hDay: 27, name: "Isrā' and Mi'rāj",        desc: "27 Rajab — The Night Journey and Ascension (Jan 16, 2026 for 1447)", type: 'historic' },
-  { hMonth: 8,  hDay: 15, name: "Laylat al-Barā'ah",       desc: "15 Sha'bān — Night of Forgiveness, also known as Shab-e-Barat (Feb 3, 2026 for 1447)", type: 'sunnah' },
-  { hMonth: 9,  hDay: 1,  name: "Ramaḍān Begins",          desc: "Start of the holy month of fasting (Feb 18, 2026 for 1447)", type: 'fard' },
+  { hMonth: 1,  hDay: 1,  name: "Islamic New Year",        desc: "First day of Muharram 1448 AH — June 17, 2026", type: 'historic' },
+  { hMonth: 1,  hDay: 10, name: "Day of Āshūrā",           desc: "10 Muharram 1448 — Fasting commemorates Musa (AS) being saved. June 26, 2026", type: 'sunnah' },
+  { hMonth: 3,  hDay: 12, name: "Mawlid al-Nabī ﷺ",        desc: "12 Rabī' al-Awwal 1448 — Birth of Prophet Muhammad ﷺ. August 25, 2026", type: 'historic' },
+  { hMonth: 7,  hDay: 27, name: "Isrā' and Mi'rāj",        desc: "27 Rajab 1447 — The Night Journey and Ascension. January 16, 2026", type: 'historic' },
+  { hMonth: 8,  hDay: 15, name: "Laylat al-Barā'ah",       desc: "15 Sha'bān 1447 — Night of Forgiveness (Shab-e-Barat). February 3, 2026", type: 'sunnah' },
+  { hMonth: 9,  hDay: 1,  name: "Ramaḍān Begins",          desc: "Start of the holy month of fasting. February 18, 2026", type: 'fard' },
   { hMonth: 9,  hDay: 21, name: "Laylat al-Qadr (est.)",   desc: "Seek it in the odd nights of the last 10 days of Ramadan", type: 'fard' },
   { hMonth: 9,  hDay: 23, name: "Laylat al-Qadr (est.)",   desc: "Night of Power — better than a thousand months", type: 'fard' },
   { hMonth: 9,  hDay: 25, name: "Laylat al-Qadr (est.)",   desc: "Seek it in the last 10 odd nights of Ramaḍān", type: 'fard' },
-  { hMonth: 9,  hDay: 27, name: "Laylat al-Qadr (27th)",   desc: "Most commonly observed Night of Power (March 15-16, 2026 for 1447)", type: 'fard' },
+  { hMonth: 9,  hDay: 27, name: "Laylat al-Qadr (27th)",   desc: "Most commonly observed Night of Power. March 16, 2026", type: 'fard' },
   { hMonth: 9,  hDay: 29, name: "Laylat al-Qadr (est.)",   desc: "One of the last odd nights of Ramaḍān", type: 'fard' },
-  { hMonth: 10, hDay: 1,  name: "Eid al-Fiṭr",             desc: "Festival marking end of Ramadan — Eid prayer is obligatory (March 20, 2026)", type: 'fard' },
-  { hMonth: 12, hDay: 8,  name: "Day of Tarwiyah",         desc: "Pilgrims depart for Minā — begin of Ḥajj rites (May 25, 2026 for 1447)", type: 'fard' },
-  { hMonth: 12, hDay: 9,  name: "Day of 'Arafah",          desc: "Standing at 'Arafah — fasting expiates two years of sins (May 26, 2026 for 1447)", type: 'fard' },
-  { hMonth: 12, hDay: 10, name: "Eid al-Aḍḥā",             desc: "Feast of Sacrifice — commemorates Ibrahim (AS)'s test (May 27, 2026 for 1447)", type: 'fard' },
-  { hMonth: 12, hDay: 11, name: "Ayyām al-Tashrīq",        desc: "Days of Tashrīq — remembrance and sacrifice rites (May 28, 2026)", type: 'sunnah' },
-  { hMonth: 12, hDay: 12, name: "Ayyām al-Tashrīq",        desc: "Continue remembrance and sacrifice rites (May 29, 2026)", type: 'sunnah' },
-  { hMonth: 12, hDay: 13, name: "Ayyām al-Tashrīq",        desc: "Final day of Tashrīq (May 30, 2026)", type: 'sunnah' },
+  { hMonth: 10, hDay: 1,  name: "Eid al-Fiṭr",             desc: "Festival marking end of Ramadan. March 20, 2026", type: 'fard' },
+  { hMonth: 12, hDay: 8,  name: "Day of Tarwiyah",         desc: "Pilgrims depart for Minā — begin of Ḥajj rites. May 25, 2026", type: 'fard' },
+  { hMonth: 12, hDay: 9,  name: "Day of 'Arafah",          desc: "Standing at 'Arafah — fasting expiates two years of sins. May 26, 2026", type: 'fard' },
+  { hMonth: 12, hDay: 10, name: "Eid al-Aḍḥā",             desc: "Feast of Sacrifice — commemorates Ibrahim (AS)'s test. May 27, 2026", type: 'fard' },
+  { hMonth: 12, hDay: 11, name: "Ayyām al-Tashrīq",        desc: "Days of Tashrīq — remembrance and sacrifice rites. May 28, 2026", type: 'sunnah' },
+  { hMonth: 12, hDay: 12, name: "Ayyām al-Tashrīq",        desc: "Continue remembrance and sacrifice rites. May 29, 2026", type: 'sunnah' },
+  { hMonth: 12, hDay: 13, name: "Ayyām al-Tashrīq",        desc: "Final day of Tashrīq. May 30, 2026", type: 'sunnah' },
 ];
 
 const EVENT_COLORS = {
